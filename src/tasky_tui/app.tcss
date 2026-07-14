@@ -1,3 +1,26 @@
 Screen {
     background: $surface;
 }
+
+#body {
+    padding: 1 2;
+}
+
+#new-todo {
+    margin-bottom: 1;
+}
+
+#todos {
+    background: transparent;
+    height: 1fr;
+}
+
+TodoItem.done Label {
+    color: $text-muted;
+    text-style: strike;
+}
+
+#status {
+    margin-top: 1;
+    color: $text-muted;
+}

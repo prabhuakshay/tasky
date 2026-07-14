@@ -20,6 +20,7 @@ classifiers = [
     "Topic :: Utilities",
 ]
 dependencies = [
+    "platformdirs>=4.0",
     "textual>=8.2.8",
 ]
 
@@ -29,3 +30,16 @@ tasky = "tasky_tui:main"
 [build-system]
 requires = ["uv_build>=0.11.19,<0.12.0"]
 build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
