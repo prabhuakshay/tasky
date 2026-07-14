@@ -157,6 +157,24 @@ class TodoStore:
         self._rewrite_archive(remaining)
         return restored
 
+    def delete_from_archive(self, todo: Todo) -> None:
+        """Drop an archived todo for good.
+
+        Like unarchive, this rewrites the file, for the same reason: what is in
+        archive.jsonl is what is archived, so a deleted todo has to leave it.
+        """
+        self._rewrite_archive([entry for entry in self.load_archive() if entry.id != todo.id])
+
+    def restore_to_archive(self, todo: Todo) -> None:
+        """Put a deleted todo back in the archive, undoing delete_from_archive.
+
+        It goes back by appending, so it lands at the end of the file and reads as
+        the most recently archived todo. Rewriting the whole archive to slot it
+        back into its old line would be a lot of work to preserve an ordering that
+        only ever meant "the order things were archived in" anyway.
+        """
+        self._append_to_archive([todo])
+
     def load_archive(self) -> list[Todo]:
         """Read archived todos, newest last. Only needed to inspect the archive."""
         try:

@@ -146,3 +146,44 @@ def test_archiving_preserves_todo_fields(store):
     assert archived.created_at == original.created_at
     assert archived.completed_at == original.completed_at
     assert archived.done is True
+
+
+def test_deleting_from_the_archive_drops_only_that_todo(store):
+    store.archive_completed([Todo(text="buy milk", done=True), Todo(text="pay rent", done=True)])
+    milk, rent = store.load_archive()
+
+    store.delete_from_archive(milk)
+
+    assert [todo.text for todo in store.load_archive()] == ["pay rent"]
+    assert rent.id == store.load_archive()[0].id
+
+
+def test_deleting_the_last_archived_todo_leaves_no_archive_behind(store):
+    store.archive_completed([Todo(text="buy milk", done=True)])
+    (archived,) = store.load_archive()
+
+    store.delete_from_archive(archived)
+
+    assert store.load_archive() == []
+    assert not store.archive_path.exists()
+
+
+def test_restoring_to_the_archive_brings_the_todo_back_whole(store):
+    store.archive_completed([Todo(text="buy milk", done=True)])
+    (archived,) = store.load_archive()
+    store.delete_from_archive(archived)
+
+    store.restore_to_archive(archived)
+
+    (restored,) = store.load_archive()
+    assert restored == archived
+
+
+def test_deleting_from_the_archive_leaves_the_working_list_alone(store):
+    store.save([Todo(text="walk dog")])
+    store.archive_completed([Todo(text="buy milk", done=True), Todo(text="walk dog")])
+    (archived,) = store.load_archive()
+
+    store.delete_from_archive(archived)
+
+    assert [todo.text for todo in store.load()] == ["walk dog"]

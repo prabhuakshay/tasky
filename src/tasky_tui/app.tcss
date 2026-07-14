@@ -10,6 +10,11 @@ Screen {
     margin-bottom: 1;
 }
 
+/* The same bar adds and edits, so it has to say which it is doing. */
+#new-todo.editing {
+    border: tall $accent;
+}
+
 /* The header and every row share these two classes, so the columns line up. */
 .text {
     width: 1fr;

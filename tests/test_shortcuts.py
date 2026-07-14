@@ -59,12 +59,81 @@ async def test_quit_shortcut_fires_while_typing(store):
         assert app._exit is True
 
 
+async def test_edit_shortcut_fires_while_typing(store):
+    store.save([Todo(text="buy milk")])
+
+    app = TaskyApp(store=store)
+    async with app.run_test() as pilot:
+        await press_as_terminal(pilot, "alt+e", "e")
+
+        assert app.editing is not None
+        assert app.query_one("#new-todo", Input).value == "buy milk"
+
+
+async def test_delete_and_undo_shortcuts_fire_while_typing(store):
+    store.save([Todo(text="buy milk")])
+
+    app = TaskyApp(store=store)
+    async with app.run_test() as pilot:
+        await press_as_terminal(pilot, "alt+d", "d")
+        assert app.todos == []
+
+        await press_as_terminal(pilot, "alt+z", "z")
+        assert [todo.text for todo in app.todos] == ["buy milk"]
+
+
 async def test_shortcut_is_not_typed_into_the_input(store):
     """The failure mode was alt+a silently inserting an "a" instead of archiving."""
     app = TaskyApp(store=store)
 
     async with app.run_test() as pilot:
         await press_as_terminal(pilot, "alt+a", "a")
+        await press_as_terminal(pilot, "alt+v", "v")
+        await press_as_terminal(pilot, "alt+d", "d")
+        await press_as_terminal(pilot, "alt+z", "z")
+
+        assert app.query_one("#new-todo", Input).value == ""
+
+
+async def test_a_shortcut_is_not_typed_into_the_input_mid_edit_either(store):
+    """The edit bar is the same Input, holding text you would hate to corrupt."""
+    store.save([Todo(text="buy milk")])
+
+    app = TaskyApp(store=store)
+    async with app.run_test() as pilot:
+        await press_as_terminal(pilot, "alt+e", "e")
+        await press_as_terminal(pilot, "alt+z", "z")
+
+        assert app.query_one("#new-todo", Input).value == "buy milk"
+
+
+async def test_a_shortcut_that_does_not_apply_is_not_typed_either(store):
+    """A binding switched off by check_action does not consume its key: Textual's
+    run_action returns False and the event carries on to the focused widget. So
+    every shortcut that can be switched off can also leave a letter in the bar.
+
+    alt+u restores from the archive, and we are not in the archive. alt+z undoes a
+    delete, and nothing has been deleted. alt+e edits, and there is nothing to edit.
+    None of them do anything here, and none of them are text.
+    """
+    app = TaskyApp(store=store)
+
+    async with app.run_test() as pilot:
+        for key, character in [("alt+u", "u"), ("alt+z", "z"), ("alt+e", "e")]:
+            await press_as_terminal(pilot, key, character)
+
+        assert app.query_one("#new-todo", Input).value == ""
+
+
+async def test_the_archives_own_shortcuts_are_not_typed_there_either(store):
+    """The mirror image: in the archive it is alt+a and alt+e that do not apply."""
+    app = TaskyApp(store=store)
+
+    async with app.run_test() as pilot:
+        await press_as_terminal(pilot, "alt+v", "v")  # into the archive
+        # The bar is disabled in the archive, so type into it on the way back out.
+        await press_as_terminal(pilot, "alt+a", "a")
+        await press_as_terminal(pilot, "alt+e", "e")
         await press_as_terminal(pilot, "alt+v", "v")
 
         assert app.query_one("#new-todo", Input).value == ""
@@ -75,7 +144,7 @@ async def test_plain_letters_still_type_normally(store):
     app = TaskyApp(store=store)
 
     async with app.run_test() as pilot:
-        for character in "avq":
+        for character in "avqedz":
             await press_as_terminal(pilot, character, character)
 
-        assert app.query_one("#new-todo", Input).value == "avq"
+        assert app.query_one("#new-todo", Input).value == "avqedz"
