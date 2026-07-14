@@ -1,10 +1,41 @@
+<div align="center">
+
 # tasky
 
-A task manager in your terminal, built with [Textual](https://textual.textualize.io/).
+**A task manager in your terminal.**
 
-> **Status:** early days. You can add todos, edit them, complete them, delete them,
-> archive the completed ones, keep notes against any of them, and file them under
-> projects. Tasky records when each one was added and completed, and shows you both.
+[![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Built with Textual](https://img.shields.io/badge/built%20with-Textual-5A3FD6)](https://textual.textualize.io/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-22863A)](LICENSE)
+[![Written by AI](https://img.shields.io/badge/written%20by-AI-8A2BE2)](#about-this-project)
+
+</div>
+
+```
+  Projects       │  Todo                      Notes │  buy milk
+ ────────────────┤ ─────────────────────────────────┤ ─────────────────────────────
+  Add a project  │  What needs doing?               │  Add a note
+                 │
+  All         3  │  ✓  buy milk  #groceries     ✎ 2 │   oat, not soya
+  groceries   1  │  ○  walk dog                     │   14 Jul 09:14
+  health      1  │  ○  book dentist  #health    ✎ 1 │
+                 │                                  │   the corner shop stocks it
+                 │                                  │   14 Jul 09:15 · edited 17:02
+  2 projects     │  2 active · 1 completed          │  2 notes
+```
+
+**Status: early days.** You can add todos, edit them, complete them, delete them, archive
+the completed ones, keep notes against any of them, and file them under projects. Tasky
+records when each one was added and completed, and shows you both.
+
+> [!NOTE]
+> **This is a personal project, and it was written entirely by AI.**
+>
+> Tasky was built for one person's use and shared in case it's useful to you. It is not
+> a product: there's no warranty, no support, and no promise that it will be maintained.
+>
+> Every part of it was written by AI (Claude), not by hand — the code, the tests, and
+> this documentation included. See [About this project](#about-this-project).
 
 ## Install
 
@@ -42,24 +73,12 @@ todo to mark it done. Your todos are saved as you go, and are still there next t
 Shortcuts work while you're typing, so you never have to leave the input to use them.
 The footer only offers the ones that would actually do something where you are.
 
-```
-  Projects       │  Todo                      Notes │  buy milk
- ────────────────┤ ─────────────────────────────────┤ ─────────────────────────────
-  Add a project  │  What needs doing?               │  Add a note
-                 │
-  All         3  │  ✓  buy milk  #groceries     ✎ 2 │   oat, not soya
-  groceries   1  │  ○  walk dog                     │   14 Jul 09:14
-  health      1  │  ○  book dentist  #health    ✎ 1 │
-                 │                                  │   the corner shop stocks it
-                 │                                  │   14 Jul 09:15 · edited 17:02
-  2 projects     │  2 active · 1 completed          │  2 notes
-```
-
 The pane you're standing in is the one that's lit — its edge and its heading — so the
 keys, which mean the thing in front of you, always have somewhere obvious to point.
 
 Each todo shows when you added it and when you completed it (in a wider terminal than
-this one — see below). The dates are stored as UTC and shown in your own timezone.
+the one sketched above — see below). The dates are stored as UTC and shown in your own
+timezone.
 Reopening a todo clears its completion date, since it is no longer done.
 
 ## Projects
@@ -244,7 +263,25 @@ This project uses [uv](https://docs.astral.sh/uv/).
 ```bash
 uv sync          # install dependencies
 uv run tasky     # run the app
+uv run pytest    # run the tests
 ```
+
+## About this project
+
+**Tasky is a personal project.** It was built for one person's use and put in the open
+in case someone else finds it useful. That's the whole of its ambition — it isn't a
+product, and you shouldn't plan around it. There's no warranty, no support, no roadmap,
+and no promise that the next version exists at all. If it breaks, you keep both pieces
+(though your data is plain text, so the pieces are legible ones).
+
+**It was written entirely by AI.** Every line of the code, every test, and every word of
+this documentation was written by Claude rather than typed by a human. A human set the
+direction and decided what was worth building — but nothing here was hand-written, and
+the design decisions the prose above explains so confidently were the AI's to make.
+
+Both of those are worth knowing before you install it. Read the code before you trust it
+with anything that matters; it's small enough to read in an afternoon, which is one of
+the better arguments for it.
 
 ## License
 
