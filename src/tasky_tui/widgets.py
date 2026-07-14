@@ -1,4 +1,5 @@
-"""The two widgets tasky builds out of Textual's: a todo row, and the input bar."""
+"""The widgets tasky builds out of Textual's: a todo row, a note row, and the bar
+you type into (which both screens use, to add and to edit)."""
 
 from datetime import datetime, timezone
 
@@ -7,10 +8,12 @@ from textual.app import ComposeResult
 from textual.containers import Horizontal
 from textual.widgets import Input, Label, ListItem
 
-from tasky_tui.storage import Todo
+from tasky_tui.storage import Note, Todo
 
 ADD_PLACEHOLDER = "What needs doing?"
 EDIT_PLACEHOLDER = "Edit the todo, then press enter — escape to cancel"
+ADD_NOTE_PLACEHOLDER = "Add a note"
+EDIT_NOTE_PLACEHOLDER = "Edit the note, then press enter — escape to cancel"
 
 
 class TodoInput(Input):
@@ -49,6 +52,7 @@ class TodoItem(ListItem):
             # markup=False on the text, or a todo that happens to contain "[dim]"
             # would be parsed as markup instead of shown as the user typed it.
             yield Label(self._text(), markup=False, classes="text")
+            yield Label(self._notes(), classes="notes")
             yield Label(_when(self.todo.created_at), classes="date")
             yield Label(self._completed(), classes="date completed")
 
@@ -62,16 +66,56 @@ class TodoItem(ListItem):
     def refresh_todo(self) -> None:
         """Redraw the row from its todo, after the todo has changed underneath."""
         self.query_one(".text", Label).update(self._text())
+        self.query_one(".notes", Label).update(self._notes())
         self.query_one(".completed", Label).update(self._completed())
         self.set_class(self.todo.done, "done")
 
     def _text(self) -> str:
         return f"{'✓' if self.todo.done else '○'}  {self.todo.text}"
 
+    def _notes(self) -> str:
+        # A count, not the notes themselves: the row says a todo has more to it,
+        # and alt+n is how you read it. A todo with nothing written against it
+        # says nothing, rather than a nought down the whole list.
+        return f"✎ {len(self.todo.notes)}" if self.todo.notes else ""
+
     def _completed(self) -> str:
         # Ask the timestamp, not the flag: a todo completed by a tasky older than
         # this feature is done with no record of when, and the cell stays empty.
         return _when(self.todo.completed_at) if self.todo.completed_at else ""
+
+
+class NoteItem(ListItem):
+    """One note: what it says, and underneath in smaller print, when it was written.
+
+    Under, not beside. A todo is a line and its dates sit in columns beside it, but a
+    note is a paragraph in a drawer a third the width of the screen -- there is no
+    room out to the right, and taking it from the note would be taking it from the
+    thing you came to read.
+    """
+
+    def __init__(self, note: Note) -> None:
+        super().__init__()
+        self.note = note
+
+    def compose(self) -> ComposeResult:
+        # markup=False for the same reason as a todo: a note is text, not markup.
+        yield Label(self.note.text, markup=False, classes="text")
+        yield Label(self._when_line(), classes="when")
+
+    def refresh_note(self) -> None:
+        """Redraw the row from its note, after the note has changed underneath."""
+        self.query_one(".text", Label).update(self.note.text)
+        self.query_one(".when", Label).update(self._when_line())
+
+    def _when_line(self) -> str:
+        written = _when(self.note.created_at)
+        # The edit only shows once there has been one. "Written, and never touched
+        # since" is worth being able to see, and a note is not "edited" on the day it
+        # was written -- the same bargain the completed column makes on a todo.
+        if self.note.updated_at:
+            return f"{written} · edited {_when(self.note.updated_at)}"
+        return written
 
 
 def _when(timestamp: str) -> str:

@@ -2,33 +2,76 @@ Screen {
     background: $surface;
 }
 
+/* The two panes: the todo list, and the notes of the todo highlighted in it. */
 #body {
     padding: 1 2;
 }
 
-#new-todo {
+#todo-pane {
+    width: 1fr;
+}
+
+#drawer {
+    width: 36;
+    padding-left: 2;
+    border-left: solid $panel;
+}
+
+/* Under 60 columns there is no room to stand the drawer beside the list -- one of
+   them would be a gutter. So it is not there at all, until alt+n asks for it, and
+   then it stands in front of the list rather than beside it. Escape gives the list
+   back. The notes stay reachable in a terminal this size; they just cannot be read
+   at the same time as the todos they belong to. */
+Screen.-narrow #drawer {
+    display: none;
+}
+
+Screen.-narrow.-notes #drawer {
+    display: block;
+    width: 1fr;
+    padding-left: 0;
+    border-left: none;
+}
+
+Screen.-narrow.-notes #todo-pane {
+    display: none;
+}
+
+/* The bar is the bar wherever you are typing, and it says which of the two things it
+   is doing: adding, or editing what is already there. */
+#new-todo, #new-note {
     margin-bottom: 1;
 }
 
-/* The same bar adds and edits, so it has to say which it is doing. */
-#new-todo.editing {
+#new-todo.editing, #new-note.editing {
     border: tall $accent;
 }
 
-/* The header and every row share these two classes, so the columns line up. */
+/* The header and every row share these classes, so the columns line up. */
 .text {
     width: 1fr;
 }
 
+/* Wide enough for "✎ 99", which is more notes than a todo has any business having. */
+.notes {
+    width: 6;
+    text-align: right;
+    color: $text-muted;
+}
+
+/* The dates are the first thing to go, and the last thing to come back: they are a
+   record, and the todo is the point. They need 28 columns between them, and the
+   drawer wants 36, so only the roomiest terminal can hold the todo, its notes and
+   its dates at once. Narrower, the dates step aside; they are still in the file. */
 .date {
+    display: none;
     width: 14;
     text-align: right;
     color: $text-muted;
 }
 
-/* Too narrow to hold both the todo and its dates: the todo wins. */
-Screen.-narrow .date {
-    display: none;
+Screen.-roomy .date {
+    display: block;
 }
 
 #columns {
@@ -39,7 +82,7 @@ Screen.-narrow .date {
     border-bottom: solid $panel;
 }
 
-#todos {
+#todos, #note-list {
     background: transparent;
     height: 1fr;
 }
@@ -59,7 +102,29 @@ TodoItem.done .text {
     text-style: strike;
 }
 
-#status {
+/* Which todo the notes are of. The row it came from is beside us, but the highlight
+   is easy to lose track of once you are typing in another pane. */
+#drawer-title {
+    height: auto;
+    padding: 0 1;
+    margin-bottom: 1;
+    text-style: bold;
+    border-bottom: solid $panel;
+}
+
+NoteItem {
+    padding: 0 1;
+    margin-bottom: 1;
+}
+
+/* Under the note, and out of the way of it. 1fr, or the line sizes itself to its own
+   text and a note edited on a later day is cut off at the edge of the drawer. */
+NoteItem .when {
+    width: 1fr;
+    color: $text-muted;
+}
+
+#status, #note-status {
     margin-top: 1;
     color: $text-muted;
 }

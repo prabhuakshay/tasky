@@ -1,6 +1,6 @@
 import json
 
-from tasky_tui.storage import DATA_DIR_ENV_VAR, Todo, TodoStore, data_dir
+from tasky_tui.storage import DATA_DIR_ENV_VAR, Note, Todo, TodoStore, data_dir
 
 
 def test_load_returns_empty_when_file_absent(store):
@@ -101,6 +101,38 @@ def test_hand_edited_file_without_optional_fields_still_loads(store):
     assert loaded.done is False
     assert loaded.id
     assert loaded.created_at
+
+
+def test_notes_round_trip(store):
+    """Notes are nested inside their todo, so saving the todo saves them."""
+    store.save([Todo(text="buy milk", notes=[Note(text="oat"), Note(text="soya")])])
+
+    (loaded,) = store.load()
+
+    assert [note.text for note in loaded.notes] == ["oat", "soya"]
+    assert all(note.id and note.created_at for note in loaded.notes)
+
+
+def test_a_rewritten_note_is_saved_with_both_its_dates(store):
+    note = Note(text="oat")
+    note.set_text("oat, not soya")
+    store.save([Todo(text="buy milk", notes=[note])])
+
+    (loaded,) = store.load()
+
+    (saved,) = loaded.notes
+    assert saved.created_at == note.created_at
+    assert saved.updated_at == note.updated_at
+
+
+def test_a_todo_saved_before_notes_existed_simply_has_none(store):
+    """A v2 file, written by a tasky that had never heard of notes."""
+    store.path.parent.mkdir(parents=True, exist_ok=True)
+    store.path.write_text(json.dumps({"version": 2, "todos": [{"text": "buy milk"}]}))
+
+    (loaded,) = store.load()
+
+    assert loaded.notes == []
 
 
 def test_data_dir_honours_env_override(tmp_path, monkeypatch):

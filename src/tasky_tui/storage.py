@@ -25,9 +25,10 @@ from platformdirs import user_data_dir
 
 APP_NAME = "tasky"
 DATA_DIR_ENV_VAR = "TASKY_DATA_DIR"
-# 2 added completed_at. Purely additive: a v1 file loads as a v2 one with no
-# completion dates, and an older tasky reads a v2 file by ignoring the new field.
-SCHEMA_VERSION = 2
+# 2 added completed_at, 3 added notes. Both purely additive: a v1 file loads as a
+# v3 one with no completion dates and no notes, and an older tasky reads a v3 file
+# by ignoring the new fields.
+SCHEMA_VERSION = 3
 
 
 def _new_id() -> str:
@@ -39,11 +40,44 @@ def _timestamp() -> str:
 
 
 @dataclass(slots=True)
+class Note:
+    """A note against a todo: what you found out, or what is left to do about it.
+
+    updated_at is None until the note is edited, so a note nobody has touched has
+    no edit date to show -- the same bargain completed_at makes on Todo below.
+    """
+
+    text: str
+    id: str = field(default_factory=_new_id)
+    created_at: str = field(default_factory=_timestamp)
+    updated_at: str | None = None
+
+    def set_text(self, text: str) -> None:
+        """Rewrite the note, stamping when it was rewritten."""
+        self.text = text
+        self.updated_at = _timestamp()
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Note:
+        return cls(
+            text=str(data["text"]),
+            id=str(data.get("id") or _new_id()),
+            created_at=str(data.get("created_at") or _timestamp()),
+            updated_at=str(data["updated_at"]) if data.get("updated_at") else None,
+        )
+
+
+@dataclass(slots=True)
 class Todo:
-    """A single todo.
+    """A single todo, and any notes kept against it.
 
     Timestamps are stored as UTC ISO 8601 strings: unambiguous wherever the file
     is read, and still legible to anyone who opens todos.json in an editor.
+
+    Notes are nested inside the todo rather than kept in a file of their own,
+    because a note only means anything against the todo it belongs to. Nesting is
+    what makes archiving a todo carry its notes along for free, and deleting one
+    take them with it -- no second file to keep in step, and nothing left orphaned.
     """
 
     text: str
@@ -51,11 +85,18 @@ class Todo:
     id: str = field(default_factory=_new_id)
     created_at: str = field(default_factory=_timestamp)
     completed_at: str | None = None
+    notes: list[Note] = field(default_factory=list)
 
     def set_done(self, done: bool) -> None:
         """Complete or reopen the todo, keeping completed_at in step with done."""
         self.done = done
         self.completed_at = _timestamp() if done else None
+
+    def add_note(self, text: str) -> Note:
+        """Add a note, and hand it back to whoever wants to show it."""
+        note = Note(text=text)
+        self.notes.append(note)
+        return note
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Todo:
@@ -71,6 +112,9 @@ class Todo:
             id=str(data.get("id") or _new_id()),
             created_at=str(data.get("created_at") or _timestamp()),
             completed_at=str(data["completed_at"]) if data.get("completed_at") else None,
+            # A todo from before notes existed simply has none. asdict() writes the
+            # nested notes back out, so no special handling is needed to save them.
+            notes=[Note.from_dict(note) for note in data.get("notes") or []],
         )
 
 

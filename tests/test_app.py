@@ -93,14 +93,14 @@ async def test_status_line_surfaces_the_completed_backlog(store):
         assert "completed" not in str(status.render())
 
 
-async def test_the_list_names_its_date_columns(store):
-    """Every row shows bare dates, so the header is what says what they mean."""
+async def test_the_list_names_its_columns(store):
+    """Every row shows bare dates and a bare count, so the header says what they mean."""
     app = TaskyApp(store=store)
 
     async with app.run_test():
         headings = [str(label.render()) for label in app.query("#columns Label")]
 
-        assert headings == ["Todo", "Added", "Completed"]
+        assert headings == ["Todo", "Notes", "Added", "Completed"]
 
 
 async def test_a_new_todo_shows_when_it_was_created(store):
@@ -190,14 +190,26 @@ async def test_the_first_row_is_highlighted_so_enter_has_a_target(store):
         assert app.query_one("#todos", ListView).index == 0
 
 
-async def test_a_narrow_terminal_gives_the_room_to_the_todo_not_the_dates(store):
+async def test_the_room_goes_to_the_todo_then_its_notes_then_its_dates(store):
+    """Three things want the width, and they give way in that order.
+
+    The dates need 28 columns between them and the drawer wants 36, so a terminal has
+    to be a good size to hold the todo, its notes and its dates at once. Below that the
+    dates are what goes: they are a record, and the todo is the point.
+    """
     store.save([Todo(text="file the quarterly expenses", done=True)])
 
     async with TaskyApp(store=store).run_test(size=(46, 16)) as pilot:
         assert not any(label.display for label in pilot.app.query(".date"))
+        assert not pilot.app.drawer.display  # no room to stand it beside the list
 
     async with TaskyApp(store=store).run_test(size=(80, 16)) as pilot:
+        assert not any(label.display for label in pilot.app.query(".date"))
+        assert pilot.app.drawer.display
+
+    async with TaskyApp(store=store).run_test(size=(120, 16)) as pilot:
         assert all(label.display for label in pilot.app.query(".date"))
+        assert pilot.app.drawer.display
 
 
 async def test_todo_rows_are_a_single_line(store):

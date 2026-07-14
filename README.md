@@ -2,9 +2,9 @@
 
 A task manager in your terminal, built with [Textual](https://textual.textualize.io/).
 
-> **Status:** early days. You can add todos, edit them, complete them, delete them, and
-> archive the completed ones. Tasky records when each one was added and completed, and
-> shows you both.
+> **Status:** early days. You can add todos, edit them, complete them, delete them,
+> archive the completed ones, and keep notes against any of them. Tasky records when
+> each one was added and completed, and shows you both.
 
 ## Install
 
@@ -27,10 +27,11 @@ todo to mark it done. Your todos are saved as you go, and are still there next t
 | Key | Action |
 | --- | --- |
 | `enter` | Add the typed todo, or complete the selected one |
-| `alt+e` | Edit the selected todo |
-| `alt+d` | Delete the selected todo |
-| `alt+z` | Undo the last delete |
-| `escape` | Cancel an edit in progress |
+| `alt+e` | Edit the selected todo — or the selected note, in the drawer |
+| `alt+d` | Delete the selected todo — or the selected note, in the drawer |
+| `alt+z` | Undo the last delete, of whichever you just deleted |
+| `alt+n` | Step into the notes drawer |
+| `escape` | Cancel an edit in progress, or leave the drawer |
 | `alt+a` | Archive completed todos |
 | `alt+v` | Show the archive (`alt+v` again to go back) |
 | `alt+u` | Restore the selected todo from the archive |
@@ -40,16 +41,55 @@ Shortcuts work while you're typing, so you never have to leave the input to use 
 The footer only offers the ones that would actually do something where you are.
 
 ```
-  Todo                                   Added         Completed
- ───────────────────────────────────────────────────────────────
-  ✓  buy milk                            14 Jul 09:12  14 Jul 13:31
-  ○  walk dog                            14 Jul 13:28
+  Todo                          Notes │  buy milk
+ ─────────────────────────────────────┤ ─────────────────────────────
+  ✓  buy milk                     ✎ 2 │
+  ○  walk dog                         │  ┌ Add a note ──────────────┐
+  ○  book dentist                 ✎ 1 │
+                                      │   oat, not soya
+                                      │   14 Jul 09:14
+                                      │
+                                      │   the corner shop stocks it
+                                      │   14 Jul 09:15 · edited 17:02
+  2 active · 1 completed              │  2 notes
 ```
 
-Each todo shows when you added it, and when you completed it. The dates are stored as
-UTC and shown in your own timezone. Reopening a todo clears its completion date, since
-it is no longer done. In a narrow terminal the date columns step aside to leave the
-room to the todo itself.
+Each todo shows when you added it and when you completed it (in a wider terminal than
+this one — see below). The dates are stored as UTC and shown in your own timezone.
+Reopening a todo clears its completion date, since it is no longer done.
+
+## Notes
+
+A todo is one line, and sometimes one line isn't enough. The drawer on the right holds
+as many notes as you like against the todo you're on, and it follows the highlight — so
+you can run down your list and read what you wrote about each one, without opening
+anything.
+
+`alt+n` steps across into it. Type a note and press `enter` to add it. `alt+e` (or
+`enter` on the note itself) opens it for editing, `alt+d` deletes it, and `alt+z` puts a
+deleted one back where it was. `escape` backs out of an edit; press it again to go back
+to the list. `tab` moves between the two panes.
+
+Those are the keys you already know from the list, and in the drawer they mean the note
+in front of you rather than the todo it belongs to. Which pane you're standing in is
+what decides — the footer changes as you move, so it always shows what the keys will do
+where you are. The `Notes` column on the todo list shows which todos have something
+written against them.
+
+Each note records when it was written, and when it was last rewritten. The `edited`
+half of that line only appears once you've actually changed it, so "written and never
+touched since" is something you can see at a glance.
+
+Notes belong to their todo. Archive the todo and the notes go with it; delete it and
+they go too, with nothing orphaned behind. Notes on an archived todo can be read but not
+changed — like the archived todo itself, they're a record of what happened. `alt+u` the
+todo back to your list if you want to write more.
+
+Three things want the width, and they give way in that order: the todo itself always
+gets it, its notes go next, and the date columns are the first to step aside. A terminal
+of about 110 columns holds all three. Narrower than that, the dates step aside for the
+drawer. Narrower than 60, there isn't room to stand the drawer beside the list at all,
+so `alt+n` puts it in front of the list instead and `escape` gives the list back.
 
 `alt+e` opens the selected todo for editing in the same bar you add todos with, with its
 text already there and the cursor at the end. `enter` saves it, `escape` leaves it as it
@@ -97,8 +137,12 @@ Two files live there, shaped for different jobs:
 
 Both are plain text, so you can read, grep, or back them up with anything. Each todo
 carries its `created_at` and, once completed, its `completed_at` — both UTC ISO 8601, so
-they stay unambiguous wherever you read them. A file written by an older tasky still
-loads: its completed todos simply have no completion date, and tasky won't invent one.
+they stay unambiguous wherever you read them. Its notes are nested inside it, each with
+its own `created_at` and, once edited, its `updated_at`; that's what makes archiving a
+todo carry its notes along for free, and deleting one take them with it.
+
+A file written by an older tasky still loads: its completed todos simply have no
+completion date, its todos have no notes, and tasky won't invent either.
 
 ## Development
 
