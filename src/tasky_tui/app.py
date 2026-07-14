@@ -9,7 +9,7 @@ class TaskyApp(App[None]):
     CSS_PATH = "app.tcss"
 
     BINDINGS = [
-        ("q", "quit", "Quit"),
+        ("alt+q", "quit", "Quit"),
     ]
 
     def compose(self) -> ComposeResult:
