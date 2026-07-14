@@ -19,7 +19,7 @@ The command you run is still `tasky`.
 tasky
 ```
 
-Press `q` to quit.
+Press `alt+q` to quit.
 
 ## Development
 
