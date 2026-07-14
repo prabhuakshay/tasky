@@ -8,7 +8,8 @@ tests are checking is which of the two panes a keypress reached.
 from conftest import enter_drawer, leave_drawer, notes, write_note
 
 from tasky_tui.app import TaskyApp
-from tasky_tui.storage import Note, Todo, TodoStore
+from tasky_tui.models import Note, Todo
+from tasky_tui.storage import TodoStore
 
 
 async def test_a_note_can_be_deleted(store):

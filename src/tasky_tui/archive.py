@@ -28,6 +28,10 @@ async def show(app: TaskyApp) -> None:
     # however large it grows.
     archived = app.store.load_archive()
     archived.reverse()
+    # A project is a filter on the list, and the archive is one of the lists it filters.
+    # Reading back what you got done in a project is the whole of what an archive is for.
+    if app.project is not None:
+        archived = [todo for todo in archived if todo.project_id == app.project.id]
     await app.show(archived)
 
 
@@ -37,25 +41,34 @@ async def archive_completed(app: TaskyApp) -> None:
     # Archiving takes the todo you may be editing out of the list underneath the input
     # bar, so the edit has nowhere to land. Same for the two below.
     app.end_edit()
-    completed = sum(todo.done for todo in app.todos)
+    # What is in front of you, not what is in the file: standing in a project, the
+    # completed todos of every other project are not yours to sweep up from here.
+    shown = app.shown()
+    completed = sum(todo.done for todo in shown)
     if not completed:
         app.notify("No completed todos to archive.", severity="warning")
         return
 
-    app.todos = app.store.archive_completed(app.todos)
-    await app.show(app.todos)
+    app.todos = app.store.archive_completed(app.todos, app.project)
+    await app.show(app.shown())
+    await app.refresh_projects()
     app.notify(f"Archived {completed} completed {status.plural(completed, 'todo')}.")
 
 
 async def toggle_view(app: TaskyApp) -> None:
     app.end_edit()
     app.viewing_archive = not app.viewing_archive
-    app.sub_title = "archive" if app.viewing_archive else ""
+    # The project you are standing in comes with you: the archive is the same list in
+    # a different mode, not a different place.
+    app.refresh_sub_title()
 
     if app.viewing_archive:
         await show(app)
     else:
-        await app.show(app.todos)
+        await app.show(app.shown())
+    # The projects themselves are read-only in here, and their counts are of what is
+    # left to do -- which, in the archive, is nothing you are looking at.
+    await app.refresh_projects()
 
     entry = app.query_one("#new-todo", TodoInput)
     entry.disabled = app.viewing_archive
@@ -73,6 +86,9 @@ async def unarchive(app: TaskyApp) -> None:
         app.notify("Nothing to restore.", severity="warning")
         return
 
+    # It comes back filed where it was. If the project it names has since been thrown
+    # away, it comes back in none -- the same thing its row has been saying all along.
     app.todos = app.store.unarchive(item.todo, app.todos)
     await show(app)
+    await app.refresh_projects()
     app.notify(f"Restored {item.todo.text!r} to your list.")

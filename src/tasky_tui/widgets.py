@@ -1,19 +1,27 @@
-"""The widgets tasky builds out of Textual's: a todo row, a note row, and the bar
-you type into (which both screens use, to add and to edit)."""
+"""The widgets tasky builds out of Textual's: a todo row, a note row, a project row,
+and the bar you type into (which every pane uses, to add and to edit)."""
 
 from datetime import datetime, timezone
 
+from rich.text import Text
 from textual import events
 from textual.app import ComposeResult
 from textual.containers import Horizontal
 from textual.widgets import Input, Label, ListItem
 
-from tasky_tui.storage import Note, Todo
+from tasky_tui import tags
+from tasky_tui.models import Note, Project, Todo
 
 ADD_PLACEHOLDER = "What needs doing?"
 EDIT_PLACEHOLDER = "Edit the todo, then press enter — escape to cancel"
+MOVE_PLACEHOLDER = "Name the project, then press enter — escape to cancel"
 ADD_NOTE_PLACEHOLDER = "Add a note"
 EDIT_NOTE_PLACEHOLDER = "Edit the note, then press enter — escape to cancel"
+ADD_PROJECT_PLACEHOLDER = "Add a project"
+EDIT_PROJECT_PLACEHOLDER = "Rename the project, then press enter — escape to cancel"
+
+EVERY_TODO = "All"
+"""The first row of the projects pane, which is not a project but the way out of one."""
 
 
 class TodoInput(Input):
@@ -41,17 +49,32 @@ class TodoInput(Input):
 
 
 class TodoItem(ListItem):
-    """One todo, as a row: what it is on the left, when it happened on the right."""
+    """One todo, as a row: what it is on the left, when it happened on the right.
 
-    def __init__(self, todo: Todo) -> None:
+    The row is handed its project rather than looking one up, because a row can see
+    only itself, and a name is all it has to show. Whoever changes what a todo is
+    filed under hands the row the new project and asks it to redraw -- the same deal
+    the todo itself is on.
+    """
+
+    def __init__(
+        self,
+        todo: Todo,
+        project: Project | None = None,
+        show_project: bool = True,
+    ) -> None:
         super().__init__()
         self.todo = todo
+        self.project = project
+        # A list that is one project already says so, in the pane and in the header, and
+        # the tag would then repeat that word on every row of it. The project is still
+        # here -- alt+e needs it, to hand the whole line back -- it is simply not worth
+        # a word of the todo's width to say a thing you cannot help but know.
+        self.show_project = show_project
 
     def compose(self) -> ComposeResult:
         with Horizontal():
-            # markup=False on the text, or a todo that happens to contain "[dim]"
-            # would be parsed as markup instead of shown as the user typed it.
-            yield Label(self._text(), markup=False, classes="text")
+            yield Label(self._line(), classes="text")
             yield Label(self._notes(), classes="notes")
             yield Label(_when(self.todo.created_at), classes="date")
             yield Label(self._completed(), classes="date completed")
@@ -65,13 +88,28 @@ class TodoItem(ListItem):
 
     def refresh_todo(self) -> None:
         """Redraw the row from its todo, after the todo has changed underneath."""
-        self.query_one(".text", Label).update(self._text())
+        self.query_one(".text", Label).update(self._line())
         self.query_one(".notes", Label).update(self._notes())
         self.query_one(".completed", Label).update(self._completed())
         self.set_class(self.todo.done, "done")
 
-    def _text(self) -> str:
-        return f"{'✓' if self.todo.done else '○'}  {self.todo.text}"
+    def _line(self) -> Text:
+        """The todo, with the project it is filed under written where you typed it.
+
+        On the end of the todo, not out in a column of its own. A column would be paid
+        for out of the width of the todo by every list, including the many with no
+        projects in them at all -- and it would stand the tag away from the text, in a
+        ragged line down the screen, when the whole point of "#groceries" is that it is
+        part of what you typed.
+
+        A Text rather than markup: the todo is what the user wrote, so a todo that
+        happens to contain "[dim]" has to come out as "[dim]" -- but the tag on the end
+        of it is ours, and it can be dim without being marked up.
+        """
+        line = Text(f"{'✓' if self.todo.done else '○'}  {self.todo.text}")
+        if self.project is not None and self.show_project:
+            line.append(f"  {tags.MARKER}{self.project.name}", style="dim")
+        return line
 
     def _notes(self) -> str:
         # A count, not the notes themselves: the row says a todo has more to it,
@@ -116,6 +154,38 @@ class NoteItem(ListItem):
         if self.note.updated_at:
             return f"{written} · edited {_when(self.note.updated_at)}"
         return written
+
+
+class ProjectItem(ListItem):
+    """One project in the pane: its name, and how many todos are still open in it.
+
+    project is None on the first row, which is not a project at all but every todo
+    you have -- the way out of a project, and where the list starts before you have
+    chosen one. It is a row rather than a key because it is a place you can be, and
+    the pane should show you which place that is.
+    """
+
+    def __init__(self, project: Project | None, active: int) -> None:
+        super().__init__()
+        self.project = project
+        self.active = active
+
+    def compose(self) -> ComposeResult:
+        with Horizontal():
+            # markup=False: a project is named by a person, not written in markup.
+            yield Label(self.name, markup=False, classes="text")
+            yield Label(self._active(), classes="count")
+
+    @property
+    def name(self) -> str:
+        return self.project.name if self.project else EVERY_TODO
+
+    def _active(self) -> str:
+        # What is left to do in it, not what is in it: a project you have finished
+        # everything in should look finished, rather than as busy as the day you
+        # started it. Nothing to do reads as nothing, for the same reason a todo
+        # with no notes shows no count.
+        return str(self.active) if self.active else ""
 
 
 def _when(timestamp: str) -> str:

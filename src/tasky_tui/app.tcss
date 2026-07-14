@@ -2,7 +2,9 @@ Screen {
     background: $surface;
 }
 
-/* The two panes: the todo list, and the notes of the todo highlighted in it. */
+/* The three panes: the projects you file todos under, the list, and the notes of the
+   todo highlighted in it. Left to right they go from the widest thing to the
+   narrowest -- a project, a todo, a note about it. */
 #body {
     padding: 1 2;
 }
@@ -11,45 +13,104 @@ Screen {
     width: 1fr;
 }
 
+/* Wide enough for a real project name beside its count, and then some: a name is one
+   word (see tags.py), and a pane you have to squint at is a pane you stop using. */
+#projects {
+    width: 26;
+    padding-right: 2;
+    border-right: solid $panel;
+}
+
 #drawer {
     width: 36;
     padding-left: 2;
     border-left: solid $panel;
 }
 
-/* Under 60 columns there is no room to stand the drawer beside the list -- one of
-   them would be a gutter. So it is not there at all, until alt+n asks for it, and
-   then it stands in front of the list rather than beside it. Escape gives the list
-   back. The notes stay reachable in a terminal this size; they just cannot be read
-   at the same time as the todos they belong to. */
-Screen.-narrow #drawer {
+/* Three panes is two more than one, and the keys mean the thing in front of you -- so
+   which pane you are standing in has to be something you can see without thinking. The
+   pane you are in lights its edge and its heading; the ones you are not stay quiet.
+   The footer says the same thing in words, and this says it in the corner of your eye. */
+#projects:focus-within {
+    border-right: solid $accent;
+}
+
+#drawer:focus-within {
+    border-left: solid $accent;
+}
+
+#todo-pane:focus-within #columns,
+#projects:focus-within #projects-title,
+#drawer:focus-within #drawer-title {
+    color: $accent;
+    border-bottom: solid $accent;
+}
+
+/* A pane stands beside the list only where there is room for it, and there is room
+   for the drawer first: it is the pane that is about the todo you are on, and so the
+   one worth having open while you read down the list. Under 60 columns neither will
+   stand beside a list that narrow -- one of them would be a gutter.
+
+   A pane that cannot stand beside the list is not gone: alt+n and alt+p put it in
+   front of the list instead, and escape gives the list back. So the notes and the
+   projects stay reachable in any terminal; they just cannot always be read at the
+   same time as the todos they belong to. */
+Screen.-narrow #drawer,
+Screen.-narrow #projects,
+Screen.-wide #projects {
     display: none;
 }
 
-Screen.-narrow.-notes #drawer {
+Screen.-narrow.-notes #drawer,
+Screen.-narrow.-projects #projects,
+Screen.-wide.-projects #projects {
     display: block;
     width: 1fr;
     padding-left: 0;
+    padding-right: 0;
     border-left: none;
+    border-right: none;
 }
 
-Screen.-narrow.-notes #todo-pane {
+Screen.-narrow.-notes #todo-pane,
+Screen.-narrow.-projects #todo-pane,
+Screen.-wide.-projects #todo-pane,
+Screen.-wide.-projects #drawer {
     display: none;
 }
 
-/* The bar is the bar wherever you are typing, and it says which of the two things it
-   is doing: adding, or editing what is already there. */
-#new-todo, #new-note {
+/* The bar is the bar wherever you are typing, and it says which of the two things it is
+   doing: adding, or editing what is already there.
+
+   A line, not a box. Three boxed bars across a screen is a lot of chrome for three
+   things that are only ever one line of text, and the borders were louder than the
+   todos they sat above. The bar you are typing in is the one that is lit. */
+#new-todo, #new-note, #new-project {
+    height: 1;
+    padding: 0 1;
     margin-bottom: 1;
+    border: none;
+    background: $surface-lighten-1;
 }
 
-#new-todo.editing, #new-note.editing {
-    border: tall $accent;
+#new-todo:focus, #new-note:focus, #new-project:focus {
+    background: $boost;
 }
 
-/* The header and every row share these classes, so the columns line up. */
+/* Mid-edit, so that a bar with your todo already in it cannot be mistaken for a bar
+   waiting for a new one -- the difference being what enter is about to do. */
+#new-todo.editing, #new-note.editing, #new-project.editing {
+    border-left: thick $accent;
+    background: $boost;
+}
+
+/* The header and every row share these classes, so the columns line up. The todo takes
+   what the fixed columns beside it leave, and a todo too long for that is cut short
+   rather than wrapped: a row is a line, and a list of lines is what you read down. */
 .text {
     width: 1fr;
+    text-wrap: nowrap;
+    text-overflow: ellipsis;
 }
 
 /* Wide enough for "✎ 99", which is more notes than a todo has any business having. */
@@ -60,9 +121,12 @@ Screen.-narrow.-notes #todo-pane {
 }
 
 /* The dates are the first thing to go, and the last thing to come back: they are a
-   record, and the todo is the point. They need 28 columns between them, and the
-   drawer wants 36, so only the roomiest terminal can hold the todo, its notes and
-   its dates at once. Narrower, the dates step aside; they are still in the file. */
+   record, and the todo is the point. They are also the only one of the four things
+   wanting the width that you cannot ask for -- alt+n and alt+p fetch a pane wherever
+   you are standing, and a todo wears its project on its own row. They need 28 columns
+   between them, on top of the 36 the drawer wants and the 18 for the projects, so it
+   takes a wide terminal to hold all four. Narrower, the dates step aside; they are
+   still in the file, and still there when you widen the window. */
 .date {
     display: none;
     width: 14;
@@ -70,7 +134,7 @@ Screen.-narrow.-notes #todo-pane {
     color: $text-muted;
 }
 
-Screen.-roomy .date {
+Screen.-full .date {
     display: block;
 }
 
@@ -82,7 +146,7 @@ Screen.-roomy .date {
     border-bottom: solid $panel;
 }
 
-#todos, #note-list {
+#todos, #note-list, #project-list {
     background: transparent;
     height: 1fr;
 }
@@ -102,14 +166,49 @@ TodoItem.done .text {
     text-style: strike;
 }
 
-/* Which todo the notes are of. The row it came from is beside us, but the highlight
-   is easy to lose track of once you are typing in another pane. */
-#drawer-title {
+/* Which todo the notes are of. The row it came from is beside us, but the highlight is
+   easy to lose track of once you are typing in another pane. The projects pane wears
+   the same heading, and both stand exactly as tall as the bar and the column headings
+   in the middle -- so the three lists begin on the same line, and the eye can cross
+   the screen without stepping up or down. */
+#drawer-title, #projects-title {
     height: auto;
     padding: 0 1;
-    margin-bottom: 1;
     text-style: bold;
     border-bottom: solid $panel;
+}
+
+ProjectItem {
+    /* Matches #columns and TodoItem, so the three panes read as one screen. */
+    padding: 0 1;
+}
+
+ProjectItem Horizontal {
+    height: auto;
+}
+
+/* A project's name is one word, and a long one is cut short rather than broken over
+   two lines -- a pane of ragged two-line projects is not a list you can run your eye
+   down. The count keeps its column whatever the name does. */
+ProjectItem .text {
+    width: 1fr;
+    text-wrap: nowrap;
+    text-overflow: ellipsis;
+}
+
+/* What is left to do in it, so a project you have finished everything in looks it. */
+ProjectItem .count {
+    width: 3;
+    text-align: right;
+    color: $text-muted;
+}
+
+/* The project the list is showing. The highlight says where you are standing, which is
+   not the same thing -- you can walk down the pane without going into anything, and
+   the two want telling apart at a glance. */
+ProjectItem.-current .text {
+    text-style: bold;
+    color: $text-accent;
 }
 
 NoteItem {
@@ -124,7 +223,7 @@ NoteItem .when {
     color: $text-muted;
 }
 
-#status, #note-status {
+#status, #note-status, #project-status {
     margin-top: 1;
     color: $text-muted;
 }

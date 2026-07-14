@@ -3,8 +3,10 @@
 from conftest import add_todo, complete_selected, dates, rows
 from textual.widgets import Input
 
-from tasky_tui.app import ADD_PLACEHOLDER, EDIT_PLACEHOLDER, TaskyApp
-from tasky_tui.storage import Todo, TodoStore
+from tasky_tui.app import TaskyApp
+from tasky_tui.widgets import ADD_PLACEHOLDER, EDIT_PLACEHOLDER
+from tasky_tui.models import Todo
+from tasky_tui.storage import TodoStore
 
 
 async def edit_selected(pilot, text: str | None = None) -> None:

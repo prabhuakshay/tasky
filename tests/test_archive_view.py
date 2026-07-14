@@ -4,7 +4,8 @@ from conftest import complete_selected, dates, rows
 from textual.widgets import Input, Static
 
 from tasky_tui.app import TaskyApp, TodoItem
-from tasky_tui.storage import Todo, TodoStore
+from tasky_tui.models import Todo
+from tasky_tui.storage import TodoStore
 
 
 async def test_archiving_removes_completed_rows_from_the_list(store):

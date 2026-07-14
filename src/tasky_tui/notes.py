@@ -26,7 +26,7 @@ from textual.message import Message
 from textual.widgets import Input, ListView, Static
 
 from tasky_tui import status
-from tasky_tui.storage import Note, Todo
+from tasky_tui.models import Note, Todo
 from tasky_tui.widgets import (
     ADD_NOTE_PLACEHOLDER,
     EDIT_NOTE_PLACEHOLDER,

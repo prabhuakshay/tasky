@@ -2,7 +2,8 @@ import json
 
 import pytest
 
-from tasky_tui.storage import Todo, TodoStore
+from tasky_tui.models import Todo
+from tasky_tui.storage import TodoStore
 
 
 def test_archiving_moves_completed_out_of_the_working_list(store):

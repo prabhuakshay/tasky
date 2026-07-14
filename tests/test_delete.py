@@ -4,7 +4,8 @@ from conftest import add_todo, rows
 from textual.widgets import Input, ListView
 
 from tasky_tui.app import TaskyApp, TodoItem
-from tasky_tui.storage import Todo, TodoStore
+from tasky_tui.models import Todo
+from tasky_tui.storage import TodoStore
 
 
 async def delete_selected(pilot) -> None:

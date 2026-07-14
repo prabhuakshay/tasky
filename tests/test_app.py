@@ -2,7 +2,8 @@ from conftest import add_todo, complete_selected, dates, rows
 from textual.widgets import Input, ListView, Static
 
 from tasky_tui.app import TaskyApp, TodoItem
-from tasky_tui.storage import Todo, TodoStore
+from tasky_tui.models import Todo
+from tasky_tui.storage import TodoStore
 
 
 async def test_submitting_the_input_adds_a_todo(store):
@@ -190,26 +191,35 @@ async def test_the_first_row_is_highlighted_so_enter_has_a_target(store):
         assert app.query_one("#todos", ListView).index == 0
 
 
-async def test_the_room_goes_to_the_todo_then_its_notes_then_its_dates(store):
-    """Three things want the width, and they give way in that order.
+async def test_the_room_goes_to_the_todo_then_its_notes_then_its_projects(store):
+    """Four things want the width, and they give way in that order.
 
-    The dates need 28 columns between them and the drawer wants 36, so a terminal has
-    to be a good size to hold the todo, its notes and its dates at once. Below that the
-    dates are what goes: they are a record, and the todo is the point.
+    The todo always gets it. Then the notes drawer, which is about the todo you are
+    standing on. Then the projects pane. The dates go first and come back last: they
+    are a record and the todo is the point -- and they are the only one of the four you
+    cannot ask for, since alt+n and alt+p fetch a pane wherever you are standing.
     """
     store.save([Todo(text="file the quarterly expenses", done=True)])
 
     async with TaskyApp(store=store).run_test(size=(46, 16)) as pilot:
         assert not any(label.display for label in pilot.app.query(".date"))
-        assert not pilot.app.drawer.display  # no room to stand it beside the list
+        assert not pilot.app.drawer.display  # no room to stand either pane beside it
+        assert not pilot.app.projects_pane.display
 
     async with TaskyApp(store=store).run_test(size=(80, 16)) as pilot:
         assert not any(label.display for label in pilot.app.query(".date"))
         assert pilot.app.drawer.display
+        assert not pilot.app.projects_pane.display
 
     async with TaskyApp(store=store).run_test(size=(120, 16)) as pilot:
+        assert not any(label.display for label in pilot.app.query(".date"))
+        assert pilot.app.drawer.display
+        assert pilot.app.projects_pane.display
+
+    async with TaskyApp(store=store).run_test(size=(140, 16)) as pilot:
         assert all(label.display for label in pilot.app.query(".date"))
         assert pilot.app.drawer.display
+        assert pilot.app.projects_pane.display
 
 
 async def test_todo_rows_are_a_single_line(store):

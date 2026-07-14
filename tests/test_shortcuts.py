@@ -13,7 +13,8 @@ from textual import events
 from textual.widgets import Input
 
 from tasky_tui.app import TaskyApp
-from tasky_tui.storage import Todo, TodoStore
+from tasky_tui.models import Todo
+from tasky_tui.storage import TodoStore
 
 
 @pytest.fixture

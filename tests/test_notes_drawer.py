@@ -21,7 +21,8 @@ from conftest import (
 from textual.widgets import ListView, Static
 
 from tasky_tui.app import TaskyApp
-from tasky_tui.storage import Note, Todo, TodoStore
+from tasky_tui.models import Note, Todo
+from tasky_tui.storage import TodoStore
 
 
 def title(app: TaskyApp) -> str:

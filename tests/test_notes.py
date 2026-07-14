@@ -14,7 +14,8 @@ from conftest import (
 from textual.widgets import Input, ListView
 
 from tasky_tui.app import TaskyApp
-from tasky_tui.storage import Note, Todo, TodoStore
+from tasky_tui.models import Note, Todo
+from tasky_tui.storage import TodoStore
 from tasky_tui.widgets import ADD_NOTE_PLACEHOLDER, EDIT_NOTE_PLACEHOLDER
 
 

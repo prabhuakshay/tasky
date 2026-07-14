@@ -1,6 +1,8 @@
-"""Persistence for todos, in the platform's user data directory.
+"""Where todos, notes and projects are written, in the platform's user data directory.
 
-Two files, with different shapes because they have different jobs:
+What they are is models.py; this is the part that survives the power going out.
+
+Three files, with different shapes because they have different jobs:
 
 ``todos.json``    The working list. Rewritten in full on every change, which is
                   cheap precisely because archiving keeps it small.
@@ -8,6 +10,19 @@ Two files, with different shapes because they have different jobs:
                   archiving costs the same whether it holds ten todos or a
                   hundred thousand, and it is never read on startup. A torn
                   write damages a single line rather than the whole document.
+``projects.json`` The projects a todo can be filed under. A file of their own,
+                  because a project outlives the todos in it: archive the last
+                  todo in a project and the project is still there to add to.
+                  It could not live in either file above -- the working list is
+                  the wrong place for something that survives the list emptying,
+                  and archive.jsonl is append-only, so nothing in it can be
+                  renamed. Written only when the projects themselves change,
+                  which is rarely.
+
+Notes went inside their todo; projects did not, and the difference is the whole
+reason for the third file. A note means nothing apart from the todo it is about,
+so nesting it costs nothing and buys everything -- archive the todo and the notes
+go with it. A project means something with no todos in it at all.
 """
 
 from __future__ import annotations
@@ -15,107 +30,21 @@ from __future__ import annotations
 import json
 import os
 import tempfile
-from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from dataclasses import asdict
 from pathlib import Path
-from typing import Any, Iterable
-from uuid import uuid4
+from typing import Iterable
 
 from platformdirs import user_data_dir
 
+from tasky_tui.models import Project, Todo
+
 APP_NAME = "tasky"
 DATA_DIR_ENV_VAR = "TASKY_DATA_DIR"
-# 2 added completed_at, 3 added notes. Both purely additive: a v1 file loads as a
-# v3 one with no completion dates and no notes, and an older tasky reads a v3 file
-# by ignoring the new fields.
-SCHEMA_VERSION = 3
-
-
-def _new_id() -> str:
-    return uuid4().hex
-
-
-def _timestamp() -> str:
-    return datetime.now(timezone.utc).isoformat()
-
-
-@dataclass(slots=True)
-class Note:
-    """A note against a todo: what you found out, or what is left to do about it.
-
-    updated_at is None until the note is edited, so a note nobody has touched has
-    no edit date to show -- the same bargain completed_at makes on Todo below.
-    """
-
-    text: str
-    id: str = field(default_factory=_new_id)
-    created_at: str = field(default_factory=_timestamp)
-    updated_at: str | None = None
-
-    def set_text(self, text: str) -> None:
-        """Rewrite the note, stamping when it was rewritten."""
-        self.text = text
-        self.updated_at = _timestamp()
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> Note:
-        return cls(
-            text=str(data["text"]),
-            id=str(data.get("id") or _new_id()),
-            created_at=str(data.get("created_at") or _timestamp()),
-            updated_at=str(data["updated_at"]) if data.get("updated_at") else None,
-        )
-
-
-@dataclass(slots=True)
-class Todo:
-    """A single todo, and any notes kept against it.
-
-    Timestamps are stored as UTC ISO 8601 strings: unambiguous wherever the file
-    is read, and still legible to anyone who opens todos.json in an editor.
-
-    Notes are nested inside the todo rather than kept in a file of their own,
-    because a note only means anything against the todo it belongs to. Nesting is
-    what makes archiving a todo carry its notes along for free, and deleting one
-    take them with it -- no second file to keep in step, and nothing left orphaned.
-    """
-
-    text: str
-    done: bool = False
-    id: str = field(default_factory=_new_id)
-    created_at: str = field(default_factory=_timestamp)
-    completed_at: str | None = None
-    notes: list[Note] = field(default_factory=list)
-
-    def set_done(self, done: bool) -> None:
-        """Complete or reopen the todo, keeping completed_at in step with done."""
-        self.done = done
-        self.completed_at = _timestamp() if done else None
-
-    def add_note(self, text: str) -> Note:
-        """Add a note, and hand it back to whoever wants to show it."""
-        note = Note(text=text)
-        self.notes.append(note)
-        return note
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> Todo:
-        """Build a Todo from stored JSON, filling in anything a hand-edit dropped.
-
-        completed_at is the one field we cannot invent: a todo written by an older
-        tasky is done without recording when, and stamping it now would be a
-        fabrication. It stays None, and the UI simply shows no completion date.
-        """
-        return cls(
-            text=str(data["text"]),
-            done=bool(data.get("done", False)),
-            id=str(data.get("id") or _new_id()),
-            created_at=str(data.get("created_at") or _timestamp()),
-            completed_at=str(data["completed_at"]) if data.get("completed_at") else None,
-            # A todo from before notes existed simply has none. asdict() writes the
-            # nested notes back out, so no special handling is needed to save them.
-            notes=[Note.from_dict(note) for note in data.get("notes") or []],
-        )
+# 2 added completed_at, 3 added notes, 4 added the project a todo is filed under.
+# All purely additive: a v1 file loads as a v4 one with no completion dates, no
+# notes and no projects, and an older tasky reads a v4 file by ignoring the new
+# fields -- it will show the todos, and simply not know they are filed anywhere.
+SCHEMA_VERSION = 4
 
 
 def _to_jsonl(todos: Iterable[Todo]) -> str:
@@ -137,10 +66,15 @@ class TodoStore:
     def __init__(self, path: Path | None = None) -> None:
         self.path = path if path is not None else data_dir() / "todos.json"
         self.archive_path = self.path.with_name("archive.jsonl")
+        self.projects_path = self.path.with_name("projects.json")
 
     @property
     def quarantine_path(self) -> Path:
         return self.path.with_name(f"{self.path.name}.corrupt")
+
+    @property
+    def projects_quarantine_path(self) -> Path:
+        return self.projects_path.with_name(f"{self.projects_path.name}.corrupt")
 
     def load(self) -> list[Todo]:
         try:
@@ -165,19 +99,53 @@ class TodoStore:
         }
         self._write_atomically(self.path, json.dumps(document, indent=2))
 
-    def archive_completed(self, todos: list[Todo]) -> list[Todo]:
-        """Move completed todos into the archive. Returns the todos left behind."""
-        completed = [todo for todo in todos if todo.done]
-        active = [todo for todo in todos if not todo.done]
+    def load_projects(self) -> list[Project]:
+        try:
+            raw = self.projects_path.read_text(encoding="utf-8")
+        except FileNotFoundError:
+            return []
+
+        try:
+            document = json.loads(raw)
+            return [Project.from_dict(entry) for entry in document["projects"]]
+        except (json.JSONDecodeError, TypeError, KeyError):
+            # Same bargain as todos.json: move it aside rather than let the next
+            # save overwrite whatever the user still has in there.
+            self.projects_path.replace(self.projects_quarantine_path)
+            return []
+
+    def save_projects(self, projects: list[Project]) -> None:
+        document = {
+            "version": SCHEMA_VERSION,
+            "projects": [asdict(project) for project in projects],
+        }
+        self._write_atomically(self.projects_path, json.dumps(document, indent=2))
+
+    def archive_completed(self, todos: list[Todo], project: Project | None = None) -> list[Todo]:
+        """Move completed todos into the archive. Returns the todos left behind.
+
+        project narrows it to the completed todos filed under one project. The list
+        you are looking at is the list alt+a acts on, and while it is showing a single
+        project that is not all of them -- archiving todos you cannot see, because
+        they are completed somewhere else, is not what the key looked like it did.
+        """
+
+        def swept(todo: Todo) -> bool:
+            return todo.done and (project is None or todo.project_id == project.id)
+
+        completed = [todo for todo in todos if swept(todo)]
+        # Not "the active ones": a completed todo in another project stays exactly
+        # where it was, and is still completed.
+        remaining = [todo for todo in todos if not swept(todo)]
         if not completed:
-            return active
+            return remaining
 
         # Append first, then shrink the working list. If we crash in between, a
         # todo is archived but still in todos.json -- annoying but recoverable.
         # The other order would lose it outright.
         self._append_to_archive(completed)
-        self.save(active)
-        return active
+        self.save(remaining)
+        return remaining
 
     def unarchive(self, todo: Todo, active: list[Todo]) -> list[Todo]:
         """Bring an archived todo back to the working list. Returns the new list.

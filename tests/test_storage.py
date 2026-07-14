@@ -1,6 +1,7 @@
 import json
 
-from tasky_tui.storage import DATA_DIR_ENV_VAR, Note, Todo, TodoStore, data_dir
+from tasky_tui.models import Note, Todo
+from tasky_tui.storage import DATA_DIR_ENV_VAR, TodoStore, data_dir
 
 
 def test_load_returns_empty_when_file_absent(store):
