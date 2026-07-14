@@ -6,8 +6,8 @@
 
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Built with Textual](https://img.shields.io/badge/built%20with-Textual-5A3FD6)](https://textual.textualize.io/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-22863A)](LICENSE)
-[![Written by AI](https://img.shields.io/badge/written%20by-AI-8A2BE2)](#about-this-project)
+[![License: MIT](https://img.shields.io/badge/license-MIT-22863A)](https://github.com/prabhuakshay/tasky/blob/main/LICENSE)
+[![Written by AI](https://img.shields.io/badge/written%20by-AI-8A2BE2)](https://github.com/prabhuakshay/tasky#about-this-project)
 
 </div>
 
@@ -28,14 +28,14 @@
 the completed ones, keep notes against any of them, and file them under projects. Tasky
 records when each one was added and completed, and shows you both.
 
-> [!NOTE]
-> **This is a personal project, and it was written entirely by AI.**
+> **📝 This is a personal project, and it was written entirely by AI.**
 >
 > Tasky was built for one person's use and shared in case it's useful to you. It is not
 > a product: there's no warranty, no support, and no promise that it will be maintained.
 >
 > Every part of it was written by AI (Claude), not by hand — the code, the tests, and
-> this documentation included. See [About this project](#about-this-project).
+> this documentation included. See
+> [About this project](https://github.com/prabhuakshay/tasky#about-this-project).
 
 ## Install
 
@@ -285,4 +285,4 @@ the better arguments for it.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](https://github.com/prabhuakshay/tasky/blob/main/LICENSE).

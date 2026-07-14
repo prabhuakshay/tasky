@@ -24,6 +24,11 @@ dependencies = [
     "textual>=8.2.8",
 ]
 
+[project.urls]
+Homepage = "https://github.com/prabhuakshay/tasky"
+Source = "https://github.com/prabhuakshay/tasky"
+Issues = "https://github.com/prabhuakshay/tasky/issues"
+
 [project.scripts]
 tasky = "tasky_tui:main"
 
