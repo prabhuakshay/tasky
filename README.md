@@ -4,6 +4,7 @@
 
 **A task manager in your terminal.**
 
+[![PyPI](https://img.shields.io/pypi/v/tasky-tui?logo=pypi&logoColor=white&color=006DAD)](https://pypi.org/project/tasky-tui/)
 [![CI](https://github.com/prabhuakshay/tasky/actions/workflows/ci.yml/badge.svg)](https://github.com/prabhuakshay/tasky/actions/workflows/ci.yml)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Built with Textual](https://img.shields.io/badge/built%20with-Textual-5A3FD6)](https://textual.textualize.io/)
