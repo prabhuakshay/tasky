@@ -1,10 +1,14 @@
-from textual.app import App, ComposeResult
+from typing import Iterable
+
+from textual.app import App, ComposeResult, SystemCommand
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
+from textual.screen import Screen
 from textual.widget import Widget
 from textual.widgets import Footer, Header, Label, ListView, Static
 
-from tasky_tui import archive, deleting, editing, filing, status
+from tasky_tui import archive, clearing, deleting, editing, filing, status
+from tasky_tui.clearing import ConfirmClear
 from tasky_tui.deleting import Deleted
 from tasky_tui.models import Project, Todo, project_of
 from tasky_tui.notes import NotesDrawer
@@ -22,6 +26,13 @@ TODO_ACTIONS = frozenset(
     {"edit", "delete", "undo_delete", "cancel_edit", "move_to_project"}
     | {"archive_completed", "unarchive", "toggle_archive_view"}
 )
+
+# Everything above, and the two keys that fetch a pane. Switched off while the confirm
+# screen is up: the app's bindings are priority ones, so they would otherwise reach for
+# a key before the screen in front of them does, and alt+d behind a modal would delete a
+# todo out of a list you cannot see, to answer a question you were not asked. Quitting
+# is not in here, and stays possible -- leaving without answering destroys nothing.
+SHORTCUTS_BEHIND_A_MODAL = TODO_ACTIONS | {"notes", "projects"}
 
 
 class TaskyApp(App[None]):
@@ -245,7 +256,29 @@ class TaskyApp(App[None]):
     async def action_unarchive(self) -> None:
         await archive.unarchive(self)
 
+    async def action_clear_all(self) -> None:
+        await clearing.clear(self)
+
+    def get_system_commands(self, screen: Screen) -> Iterable[SystemCommand]:
+        """What the command palette offers, on top of what Textual puts there.
+
+        Clearing everything lives here and nowhere else. It is not on an alt+key, because
+        the alt+keys are the ones your fingers learn, and the one thing tasky cannot take
+        back should not be a thing your fingers can do. Here you have to open the palette
+        and name it -- and naming it is the first of the two times you are made to say it.
+        """
+        yield from super().get_system_commands(screen)
+        yield SystemCommand(
+            "Clear everything",
+            "Delete every todo, note, archived todo and project, and start afresh",
+            self.action_clear_all,
+        )
+
     def check_action(self, action: str, parameters: tuple[object, ...]) -> bool:
+        # A modal asks one question, and the keys behind it are not answers to it.
+        if isinstance(self.screen, ConfirmClear):
+            return action not in SHORTCUTS_BEHIND_A_MODAL
+
         # Standing in a side pane, alt+d is about the note or the project you are on,
         # not the todo they belong to. So the keys that act on the list switch off while
         # the focus is in one, and the pane's own take the keys: Textual checks priority

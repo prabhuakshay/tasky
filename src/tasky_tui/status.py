@@ -39,6 +39,29 @@ def projects(count: int, read_only: bool = False) -> str:
     return summary
 
 
+def to_clear(todos: int, notes: int, archived: int, projects: int) -> str:
+    """What clearing is about to cost, counted out.
+
+    Counted, because "everything" is a word and a number is a fact: the whole job of
+    this sentence is to stop someone who has not understood what they are about to do,
+    and nothing stops you like seeing how much of it there is.
+
+    Only what is actually there. A tasky with no projects should not be told it is
+    about to lose nought of them -- a zero in a sentence meant to give you pause reads
+    as reassurance, and there is nothing reassuring about this one.
+    """
+    counted = [
+        (todos, plural(todos, "todo")),
+        (notes, plural(notes, "note")),
+        (archived, f"archived {plural(archived, 'todo')}"),
+        (projects, plural(projects, "project")),
+    ]
+    parts = [f"{count} {noun}" for count, noun in counted if count]
+    if len(parts) <= 1:
+        return "".join(parts)
+    return f"{', '.join(parts[:-1])} and {parts[-1]}"
+
+
 def viewing(archived: bool, project: str | None) -> str:
     """What the header says you are looking at, when it is not simply your todos.
 

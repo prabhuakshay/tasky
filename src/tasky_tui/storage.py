@@ -187,6 +187,38 @@ class TodoStore:
         """
         self._append_to_archive([todo])
 
+    def clear_all(self) -> list[Path]:
+        """Set every file aside, leaving tasky as it was the first time you ran it.
+
+        Set aside, not deleted. It is the same move load() makes for a file it cannot
+        parse, and it is the same reasoning: what is in these files is the user's, and
+        tasky should not be the last thing ever to touch it. The screen that asks for
+        this says it cannot be undone, and means it -- nothing in the app will bring any
+        of it back, and none of it is in the undo slot. What is left on disk is a rope
+        for someone who knows to go looking, not a feature, and not a promise.
+
+        One deep. Clear twice and the second clear overwrites the first's backup, which
+        is the bargain alt+z already strikes: the way back is for the thing you have
+        just this moment regretted, not a history to walk backwards through.
+
+        Returns the files it set aside, which is what the app tells you about afterwards.
+        """
+        set_aside = []
+        for path in (self.path, self.archive_path, self.projects_path):
+            backup = self.cleared_path(path)
+            try:
+                # Atomic, and it lands on top of any previous backup -- see "one deep".
+                path.replace(backup)
+            except FileNotFoundError:
+                # Nothing there to set aside. A tasky you have never filed anything in
+                # has no projects.json, and clearing it is not a failure to clear it.
+                continue
+            set_aside.append(backup)
+        return set_aside
+
+    def cleared_path(self, path: Path) -> Path:
+        return path.with_name(f"{path.name}.cleared")
+
     def load_archive(self) -> list[Todo]:
         """Read archived todos, newest last. Only needed to inspect the archive."""
         try:

@@ -75,6 +75,10 @@ todo to mark it done. Your todos are saved as you go, and are still there next t
 Shortcuts work while you're typing, so you never have to leave the input to use them.
 The footer only offers the ones that would actually do something where you are.
 
+One thing is deliberately not on a key: clearing everything and starting again lives in
+the command palette (`ctrl+p`), where you have to go looking for it. See
+[Starting afresh](https://github.com/prabhuakshay/tasky#starting-afresh).
+
 The pane you're standing in is the one that's lit — its edge and its heading — so the
 keys, which mean the thing in front of you, always have somewhere obvious to point.
 
@@ -212,6 +216,39 @@ door that only ever grows. `alt+z` undoes that as well.
 The archive itself is read-only: it's the record of what you finished, so `alt+e` doesn't
 apply there. Restore a todo with `alt+u` if you want to change it.
 
+## Starting afresh
+
+Everything else tasky does has a way back. A completed todo is struck through rather than
+gone, `alt+u` undoes an archiving, and `alt+z` holds the delete you have just this moment
+regretted. Clearing everything has none, so it is the one thing tasky makes you say twice.
+
+It lives in the command palette — `ctrl+p`, then "Clear everything" — and nowhere else.
+Not on an `alt+key`, because the `alt+keys` are the ones your fingers learn, and the one
+thing tasky cannot take back should not be something your fingers can do while you are
+thinking about something else. `alt+d` is one slip away from `alt+c`; what they cost is
+not one slip apart.
+
+Choosing it doesn't clear anything. It asks first, and the asking counts out exactly what
+you are about to lose — "This deletes 12 todos, 5 notes, 34 archived todos and 3
+projects" — because *everything* is a word and a number is a fact, and nothing gives you
+pause like seeing how much of it there is. To go through with it you have to type the
+word `clear`. A yes/no box is one confident keystroke away from an empty tasky, and the
+keystroke people are surest about is the one they press without reading; typing five
+letters cannot be done by muscle memory, because muscle memory has never done it before.
+`escape`, the Cancel button, and simply walking away all mean no — the safe answer is the
+one you get for doing nothing.
+
+Then it takes the lot: every todo, the notes written against them, the whole archive, and
+every project. Tasky is as it was the first time you ran it.
+
+What it does not do is shred your files. The three of them are renamed aside —
+`todos.json.cleared`, and so on, next to where they were — the same move tasky already
+makes for a file it cannot parse. The screen says this cannot be undone and it means it:
+nothing in the app will bring any of it back, and `alt+z` will not either. But if you
+clear the wrong tasky at the wrong moment, there is a rope on the floor, and it is worth
+knowing it is there. One deep — clear twice and the second clear writes over the first's
+backup, the same bargain `alt+z` strikes.
+
 ## Where your data lives
 
 Tasky stores everything in the standard user data directory for your OS:
@@ -242,6 +279,12 @@ Three files live there, shaped for different jobs:
 All three are plain text, so you can read, grep, or back them up with anything. Each todo
 carries its `created_at` and, once completed, its `completed_at` — both UTC ISO 8601, so
 they stay unambiguous wherever you read them.
+
+A fourth kind of file turns up only if you have cleared everything: `todos.json.cleared`
+and its two siblings, which are the files as they stood the moment before. See
+[Starting afresh](https://github.com/prabhuakshay/tasky#starting-afresh). A file ending
+`.corrupt` is the other one tasky sets
+aside rather than overwrites — that one is a file it could not parse.
 
 Its notes are nested inside it, each with its own `created_at` and, once edited, its
 `updated_at`; that's what makes archiving a todo carry its notes along for free, and

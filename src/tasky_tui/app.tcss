@@ -227,3 +227,64 @@ NoteItem .when {
     margin-top: 1;
     color: $text-muted;
 }
+
+/* The one screen that stands in front of the app, because it asks the one question the
+   app cannot answer for you. Everything about it is meant to slow you down: it dims what
+   is behind it, so there is nothing to read but the question; it is bordered in the
+   error colour, which nothing else in tasky wears; and the button that does the thing is
+   dead until you have typed the word. */
+ConfirmClear {
+    align: center middle;
+    background: $background 60%;
+}
+
+#confirm-clear {
+    width: 60;
+    height: auto;
+    padding: 1 2;
+    background: $surface;
+    border: thick $error;
+}
+
+#confirm-title {
+    width: 1fr;
+    margin-bottom: 1;
+    text-style: bold;
+    color: $text-error;
+}
+
+/* The count, which is the part that is about you rather than about tasky. */
+#confirm-toll {
+    margin-bottom: 1;
+}
+
+#confirm-warning {
+    margin-bottom: 1;
+    color: $text-muted;
+}
+
+#confirm-prompt {
+    width: 1fr;
+}
+
+/* The same bar as everywhere else in tasky: a line rather than a box. */
+#confirm-word {
+    height: 1;
+    padding: 0 1;
+    margin-bottom: 1;
+    border: none;
+    background: $surface-lighten-1;
+}
+
+#confirm-word:focus {
+    background: $boost;
+}
+
+#confirm-buttons {
+    height: auto;
+    align-horizontal: right;
+}
+
+#confirm-buttons Button {
+    margin-left: 2;
+}
