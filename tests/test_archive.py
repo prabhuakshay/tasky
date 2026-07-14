@@ -5,11 +5,6 @@ import pytest
 from tasky_tui.storage import Todo, TodoStore
 
 
-@pytest.fixture
-def store(tmp_path):
-    return TodoStore(tmp_path / "todos.json")
-
-
 def test_archiving_moves_completed_out_of_the_working_list(store):
     store.save([Todo(text="buy milk", done=True), Todo(text="walk dog")])
 
@@ -141,11 +136,13 @@ def test_load_archive_is_empty_when_nothing_archived(store):
 
 
 def test_archiving_preserves_todo_fields(store):
-    original = Todo(text="buy milk", done=True)
+    original = Todo(text="buy milk")
+    original.set_done(True)
 
     store.archive_completed([original])
 
     (archived,) = store.load_archive()
     assert archived.id == original.id
     assert archived.created_at == original.created_at
+    assert archived.completed_at == original.completed_at
     assert archived.done is True

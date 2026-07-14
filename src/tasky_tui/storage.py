@@ -25,7 +25,9 @@ from platformdirs import user_data_dir
 
 APP_NAME = "tasky"
 DATA_DIR_ENV_VAR = "TASKY_DATA_DIR"
-SCHEMA_VERSION = 1
+# 2 added completed_at. Purely additive: a v1 file loads as a v2 one with no
+# completion dates, and an older tasky reads a v2 file by ignoring the new field.
+SCHEMA_VERSION = 2
 
 
 def _new_id() -> str:
@@ -38,21 +40,37 @@ def _timestamp() -> str:
 
 @dataclass(slots=True)
 class Todo:
-    """A single todo."""
+    """A single todo.
+
+    Timestamps are stored as UTC ISO 8601 strings: unambiguous wherever the file
+    is read, and still legible to anyone who opens todos.json in an editor.
+    """
 
     text: str
     done: bool = False
     id: str = field(default_factory=_new_id)
     created_at: str = field(default_factory=_timestamp)
+    completed_at: str | None = None
+
+    def set_done(self, done: bool) -> None:
+        """Complete or reopen the todo, keeping completed_at in step with done."""
+        self.done = done
+        self.completed_at = _timestamp() if done else None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Todo:
-        """Build a Todo from stored JSON, filling in anything a hand-edit dropped."""
+        """Build a Todo from stored JSON, filling in anything a hand-edit dropped.
+
+        completed_at is the one field we cannot invent: a todo written by an older
+        tasky is done without recording when, and stamping it now would be a
+        fabrication. It stays None, and the UI simply shows no completion date.
+        """
         return cls(
             text=str(data["text"]),
             done=bool(data.get("done", False)),
             id=str(data.get("id") or _new_id()),
             created_at=str(data.get("created_at") or _timestamp()),
+            completed_at=str(data["completed_at"]) if data.get("completed_at") else None,
         )
 
 

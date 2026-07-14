@@ -1,33 +1,44 @@
+from datetime import datetime, timezone
+
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Vertical
+from textual.containers import Horizontal, Vertical
 from textual.widgets import Footer, Header, Input, Label, ListItem, ListView, Static
 
 from tasky_tui.storage import Todo, TodoStore
 
 
 class TodoItem(ListItem):
-    """One todo, rendered as a row in the list."""
+    """One todo, as a row: what it is on the left, when it happened on the right."""
 
     def __init__(self, todo: Todo) -> None:
         super().__init__()
         self.todo = todo
 
     def compose(self) -> ComposeResult:
-        # markup=False, or Textual parses the "[x]" marker as a markup tag and eats it.
-        yield Label(self._label(), markup=False)
+        with Horizontal():
+            # markup=False on the text, or a todo that happens to contain "[dim]"
+            # would be parsed as markup instead of shown as the user typed it.
+            yield Label(self._text(), markup=False, classes="text")
+            yield Label(_when(self.todo.created_at), classes="date")
+            yield Label(self._completed(), classes="date completed")
 
     def on_mount(self) -> None:
         self.set_class(self.todo.done, "done")
 
     def toggle_done(self) -> None:
-        self.todo.done = not self.todo.done
-        self.query_one(Label).update(self._label())
+        self.todo.set_done(not self.todo.done)
+        self.query_one(".text", Label).update(self._text())
+        self.query_one(".completed", Label).update(self._completed())
         self.set_class(self.todo.done, "done")
 
-    def _label(self) -> str:
-        marker = "x" if self.todo.done else " "
-        return f"[{marker}] {self.todo.text}"
+    def _text(self) -> str:
+        return f"{'✓' if self.todo.done else '○'}  {self.todo.text}"
+
+    def _completed(self) -> str:
+        # Ask the timestamp, not the flag: a todo completed by a tasky older than
+        # this feature is done with no record of when, and the cell stays empty.
+        return _when(self.todo.completed_at) if self.todo.completed_at else ""
 
 
 class TaskyApp(App[None]):
@@ -35,6 +46,11 @@ class TaskyApp(App[None]):
 
     TITLE = "tasky"
     CSS_PATH = "app.tcss"
+
+    # In a narrow terminal the two date columns would squeeze the todo text down
+    # to a few characters. The todo is the point, so below this width the dates
+    # step aside (see app.tcss); they are still in the file, and in a wider window.
+    HORIZONTAL_BREAKPOINTS = [(0, "-narrow"), (60, "-wide")]
 
     # priority=True, or these never fire while the Input has focus. Textual hands
     # Input an alt+<letter> event with .character set to the bare letter, so
@@ -57,6 +73,12 @@ class TaskyApp(App[None]):
         yield Header()
         with Vertical(id="body"):
             yield Input(placeholder="What needs doing?", id="new-todo")
+            # Naming the date columns once, here, is what lets each row show bare
+            # dates instead of repeating "added ..." and "done ..." on every line.
+            with Horizontal(id="columns"):
+                yield Label("Todo", classes="text")
+                yield Label("Added", classes="date")
+                yield Label("Completed", classes="date")
             yield ListView(id="todos")
             yield Static(id="status")
         yield Footer()
@@ -178,3 +200,17 @@ class TaskyApp(App[None]):
 
 def _todos(count: int) -> str:
     return "todo" if count == 1 else "todos"
+
+
+def _when(timestamp: str) -> str:
+    """Render a stored UTC timestamp in the reader's own timezone."""
+    try:
+        moment = datetime.fromisoformat(timestamp)
+    except ValueError:
+        # A hand-edited timestamp we cannot parse. Show it as it stands rather
+        # than crashing the list over a cosmetic field.
+        return timestamp
+    if moment.tzinfo is None:
+        # Naive timestamps only reach us from a hand-edit; ours are always UTC.
+        moment = moment.replace(tzinfo=timezone.utc)
+    return moment.astimezone().strftime("%d %b %H:%M")

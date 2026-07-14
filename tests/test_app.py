@@ -1,18 +1,8 @@
-import pytest
-from textual.widgets import Input, Label, ListView, Static
+from conftest import add_todo, complete_selected, dates, rows
+from textual.widgets import Input, ListView, Static
 
 from tasky_tui.app import TaskyApp, TodoItem
 from tasky_tui.storage import Todo, TodoStore
-
-
-@pytest.fixture
-def store(tmp_path):
-    return TodoStore(tmp_path / "todos.json")
-
-
-async def add_todo(pilot, text: str) -> None:
-    pilot.app.query_one("#new-todo", Input).value = text
-    await pilot.press("enter")
 
 
 async def test_submitting_the_input_adds_a_todo(store):
@@ -22,7 +12,7 @@ async def test_submitting_the_input_adds_a_todo(store):
         await add_todo(pilot, "buy milk")
 
         assert [todo.text for todo in app.todos] == ["buy milk"]
-        assert len(app.query(TodoItem)) == 1
+        assert rows(app) == ["○  buy milk"]
 
 
 async def test_input_is_cleared_after_adding(store):
@@ -59,11 +49,10 @@ async def test_selecting_a_todo_toggles_it_done_and_persists(store):
 
     async with app.run_test() as pilot:
         await add_todo(pilot, "buy milk")
-        app.query_one("#todos", ListView).focus()
-        await pilot.pause()
-        await pilot.press("enter")
+        await complete_selected(pilot)
 
         assert app.todos[0].done is True
+        assert rows(app) == ["✓  buy milk"]
 
     (reloaded,) = TodoStore(store.path).load()
     assert reloaded.done is True
@@ -80,30 +69,13 @@ async def test_existing_todos_are_shown_on_start(store):
         assert item.has_class("done")
 
 
-async def test_archiving_removes_completed_rows_from_the_list(store):
-    store.save([Todo(text="buy milk", done=True), Todo(text="walk dog")])
+async def test_a_todo_containing_markup_is_shown_as_typed(store):
+    # "[dim]" is valid Textual markup, so the label must not interpret it.
+    store.save([Todo(text="buy [dim]milk[/dim]")])
 
     app = TaskyApp(store=store)
-    async with app.run_test() as pilot:
-        await pilot.press("alt+a")
-        await pilot.pause()
-
-        assert [todo.text for todo in app.todos] == ["walk dog"]
-        assert [item.todo.text for item in app.query(TodoItem)] == ["walk dog"]
-
-    assert [todo.text for todo in store.load_archive()] == ["buy milk"]
-
-
-async def test_archiving_with_nothing_completed_changes_nothing(store):
-    store.save([Todo(text="walk dog")])
-
-    app = TaskyApp(store=store)
-    async with app.run_test() as pilot:
-        await pilot.press("alt+a")
-        await pilot.pause()
-
-        assert [todo.text for todo in app.todos] == ["walk dog"]
-    assert not store.archive_path.exists()
+    async with app.run_test():
+        assert rows(app) == ["○  buy [dim]milk[/dim]"]
 
 
 async def test_status_line_surfaces_the_completed_backlog(store):
@@ -121,185 +93,117 @@ async def test_status_line_surfaces_the_completed_backlog(store):
         assert "completed" not in str(status.render())
 
 
-async def test_archive_view_shows_archived_todos(store):
-    store.save([Todo(text="buy milk", done=True), Todo(text="walk dog")])
-
+async def test_the_list_names_its_date_columns(store):
+    """Every row shows bare dates, so the header is what says what they mean."""
     app = TaskyApp(store=store)
-    async with app.run_test() as pilot:
-        await pilot.press("alt+a")
-        await pilot.pause()
-        assert [item.todo.text for item in app.query(TodoItem)] == ["walk dog"]
 
-        await pilot.press("alt+v")
-        await pilot.pause()
+    async with app.run_test():
+        headings = [str(label.render()) for label in app.query("#columns Label")]
 
-        assert app.viewing_archive is True
-        assert [item.todo.text for item in app.query(TodoItem)] == ["buy milk"]
+        assert headings == ["Todo", "Added", "Completed"]
 
 
-async def test_archive_view_toggles_back_to_the_working_list(store):
-    store.save([Todo(text="buy milk", done=True), Todo(text="walk dog")])
-
-    app = TaskyApp(store=store)
-    async with app.run_test() as pilot:
-        await pilot.press("alt+a")
-        await pilot.press("alt+v")
-        await pilot.pause()
-        await pilot.press("alt+v")
-        await pilot.pause()
-
-        assert app.viewing_archive is False
-        assert [item.todo.text for item in app.query(TodoItem)] == ["walk dog"]
-
-
-async def test_archive_view_shows_newest_first(store):
-    store.archive_completed([Todo(text="buy milk", done=True)])
-    store.archive_completed([Todo(text="pay rent", done=True)])
-
-    app = TaskyApp(store=store)
-    async with app.run_test() as pilot:
-        await pilot.press("alt+v")
-        await pilot.pause()
-
-        assert [item.todo.text for item in app.query(TodoItem)] == ["pay rent", "buy milk"]
-
-
-async def test_unarchiving_restores_the_selected_todo(store):
-    store.save([Todo(text="buy milk", done=True), Todo(text="walk dog")])
-
-    app = TaskyApp(store=store)
-    async with app.run_test() as pilot:
-        await pilot.press("alt+a")  # archive 'buy milk'
-        await pilot.press("alt+v")  # look at the archive
-        await pilot.pause()
-        await pilot.press("alt+u")  # put it back
-        await pilot.pause()
-
-        assert not app.query(TodoItem)  # archive is now empty
-        assert [todo.text for todo in app.todos] == ["walk dog", "buy milk"]
-
-        await pilot.press("alt+v")  # back to the working list
-        await pilot.pause()
-        assert [item.todo.text for item in app.query(TodoItem)] == ["walk dog", "buy milk"]
-
-    assert store.load_archive() == []
-    assert [todo.text for todo in store.load()] == ["walk dog", "buy milk"]
-
-
-async def test_unarchived_todo_comes_back_still_completed(store):
-    store.archive_completed([Todo(text="buy milk", done=True)])
-
-    app = TaskyApp(store=store)
-    async with app.run_test() as pilot:
-        await pilot.press("alt+v")
-        await pilot.pause()
-        await pilot.press("alt+u")
-        await pilot.pause()
-
-        assert app.todos[0].done is True
-
-        # ...and enter reopens it, which is the whole point of a true undo.
-        await pilot.press("alt+v")
-        await pilot.pause()
-        app.query_one("#todos", ListView).focus()
-        await pilot.pause()
-        await pilot.press("enter")
-        await pilot.pause()
-
-        assert app.todos[0].done is False
-
-
-async def test_unarchiving_an_empty_archive_does_nothing(store):
+async def test_a_new_todo_shows_when_it_was_created(store):
     app = TaskyApp(store=store)
 
     async with app.run_test() as pilot:
-        await pilot.press("alt+v")
-        await pilot.pause()
-        await pilot.press("alt+u")
-        await pilot.pause()
+        await add_todo(pilot, "buy milk")
 
-        assert app.todos == []
+        ((added, completed),) = dates(app)
+        assert added  # a local date, whose exact text depends on the reader's timezone
+        assert completed == ""
 
 
-async def test_restore_is_only_offered_inside_the_archive(store):
+async def test_completing_a_todo_shows_and_records_when(store):
     app = TaskyApp(store=store)
 
     async with app.run_test() as pilot:
-        assert app.check_action("unarchive", ()) is False
-        assert app.check_action("archive_completed", ()) is True
+        await add_todo(pilot, "buy milk")
+        await complete_selected(pilot)
 
-        await pilot.press("alt+v")
-        await pilot.pause()
+        assert app.todos[0].completed_at is not None
+        ((_added, completed),) = dates(app)
+        assert completed
 
-        assert app.check_action("unarchive", ()) is True
-        assert app.check_action("archive_completed", ()) is False
-
-
-async def test_archive_view_is_read_only(store):
-    store.archive_completed([Todo(text="buy milk", done=True)])
-
-    app = TaskyApp(store=store)
-    async with app.run_test() as pilot:
-        await pilot.press("alt+v")
-        await pilot.pause()
-        app.query_one("#todos", ListView).focus()
-        await pilot.pause()
-        await pilot.press("enter")
-        await pilot.pause()
-
-        assert app.query_one(TodoItem).todo.done is True
-        assert [todo.done for todo in store.load_archive()] == [True]
+    (reloaded,) = TodoStore(store.path).load()
+    assert reloaded.completed_at == app.todos[0].completed_at
 
 
-async def test_typing_is_disabled_in_the_archive_view(store):
-    app = TaskyApp(store=store)
-
-    async with app.run_test() as pilot:
-        await pilot.press("alt+v")
-        await pilot.pause()
-        assert app.query_one("#new-todo", Input).disabled is True
-
-        await pilot.press("alt+v")
-        await pilot.pause()
-        assert app.query_one("#new-todo", Input).disabled is False
-
-
-async def test_startup_never_reads_the_archive(store, monkeypatch):
-    """The archive can grow without bound, so opening tasky must not pay for it."""
-    store.archive_completed([Todo(text="buy milk", done=True)])
-
-    reads = []
-    original = TodoStore.load_archive
-    monkeypatch.setattr(
-        TodoStore, "load_archive", lambda self: (reads.append(1), original(self))[1]
-    )
+async def test_reopening_a_todo_drops_its_completion_date(store):
+    store.save([Todo(text="buy milk")])
 
     app = TaskyApp(store=store)
     async with app.run_test() as pilot:
-        assert reads == []
+        await complete_selected(pilot)
+        await complete_selected(pilot)  # and reopen it
 
-        await pilot.press("alt+v")
-        await pilot.pause()
-        assert reads == [1]
+        assert app.todos[0].completed_at is None
+        ((_added, completed),) = dates(app)
+        assert completed == ""
 
 
-async def test_empty_archive_view_says_so(store):
+async def test_a_todo_completed_before_dates_were_recorded_shows_no_completion(store):
+    """Todos written by an older tasky are done, with no record of when."""
+    store.save([Todo(text="buy milk", done=True)])
+
     app = TaskyApp(store=store)
+    async with app.run_test():
+        ((added, completed),) = dates(app)
 
-    async with app.run_test() as pilot:
-        await pilot.press("alt+v")
-        await pilot.pause()
-
-        assert not app.query(TodoItem)
-        assert "Nothing archived yet" in str(app.query_one("#status", Static).render())
+        assert added
+        assert completed == ""
 
 
-async def test_completed_marker_is_not_swallowed_as_markup(store):
-    # "[x]" is valid Textual markup, so the label must not interpret it.
+async def test_dates_are_shown_in_the_readers_own_timezone(store, monkeypatch):
+    """Timestamps are stored as UTC, so they must be converted for display."""
+    monkeypatch.setenv("TZ", "Asia/Kolkata")  # UTC+5:30, so the clock time differs
+    import time
+
+    time.tzset()
+
+    store.save([Todo(text="buy milk", created_at="2026-07-14T09:00:00+00:00")])
+
+    app = TaskyApp(store=store)
+    async with app.run_test():
+        ((added, _completed),) = dates(app)
+
+        assert added == "14 Jul 14:30"
+
+
+async def test_an_unparseable_date_does_not_break_the_list(store):
+    """A hand-edited timestamp is a cosmetic problem, not a crash."""
+    store.save([Todo(text="buy milk", created_at="last tuesday")])
+
+    app = TaskyApp(store=store)
+    async with app.run_test():
+        ((added, _completed),) = dates(app)
+
+        assert added == "last tuesday"
+        assert rows(app) == ["○  buy milk"]
+
+
+async def test_the_first_row_is_highlighted_so_enter_has_a_target(store):
+    store.save([Todo(text="buy milk")])
+
+    app = TaskyApp(store=store)
+    async with app.run_test():
+        assert app.query_one("#todos", ListView).index == 0
+
+
+async def test_a_narrow_terminal_gives_the_room_to_the_todo_not_the_dates(store):
+    store.save([Todo(text="file the quarterly expenses", done=True)])
+
+    async with TaskyApp(store=store).run_test(size=(46, 16)) as pilot:
+        assert not any(label.display for label in pilot.app.query(".date"))
+
+    async with TaskyApp(store=store).run_test(size=(80, 16)) as pilot:
+        assert all(label.display for label in pilot.app.query(".date"))
+
+
+async def test_todo_rows_are_a_single_line(store):
+    """The dates sit beside the todo, not under it."""
     store.save([Todo(text="buy milk", done=True), Todo(text="walk dog")])
 
     app = TaskyApp(store=store)
     async with app.run_test():
-        rendered = [str(label.render()) for label in app.query(Label)]
-
-        assert rendered == ["[x] buy milk", "[ ] walk dog"]
+        assert [item.region.height for item in app.query(TodoItem)] == [1, 1]

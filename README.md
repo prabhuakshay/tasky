@@ -3,6 +3,7 @@
 A task manager in your terminal, built with [Textual](https://textual.textualize.io/).
 
 > **Status:** early days. You can add todos, complete them, and archive the completed ones.
+> Tasky records when each one was added and completed, and shows you both.
 
 ## Install
 
@@ -31,6 +32,18 @@ todo to mark it done. Your todos are saved as you go, and are still there next t
 | `alt+q` | Quit |
 
 Shortcuts work while you're typing, so you never have to leave the input to use them.
+
+```
+  Todo                                   Added         Completed
+ ───────────────────────────────────────────────────────────────
+  ✓  buy milk                            14 Jul 09:12  14 Jul 13:31
+  ○  walk dog                            14 Jul 13:28
+```
+
+Each todo shows when you added it, and when you completed it. The dates are stored as
+UTC and shown in your own timezone. Reopening a todo clears its completion date, since
+it is no longer done. In a narrow terminal the date columns step aside to leave the
+room to the todo itself.
 
 Completing a todo leaves it in the list, struck through, so you can see what you got
 done and undo a mis-click. `alt+a` sweeps those into the archive once you're finished
@@ -62,7 +75,10 @@ Two files live there, shaped for different jobs:
   archiving costs the same whether it holds ten todos or a hundred thousand, and it's
   never read at startup. A torn write damages one line, not the whole file.
 
-Both are plain text, so you can read, grep, or back them up with anything.
+Both are plain text, so you can read, grep, or back them up with anything. Each todo
+carries its `created_at` and, once completed, its `completed_at` — both UTC ISO 8601, so
+they stay unambiguous wherever you read them. A file written by an older tasky still
+loads: its completed todos simply have no completion date, and tasky won't invent one.
 
 ## Development
 

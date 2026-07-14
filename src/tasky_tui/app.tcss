@@ -10,12 +10,46 @@ Screen {
     margin-bottom: 1;
 }
 
+/* The header and every row share these two classes, so the columns line up. */
+.text {
+    width: 1fr;
+}
+
+.date {
+    width: 14;
+    text-align: right;
+    color: $text-muted;
+}
+
+/* Too narrow to hold both the todo and its dates: the todo wins. */
+Screen.-narrow .date {
+    display: none;
+}
+
+#columns {
+    height: auto;
+    padding: 0 1;
+    text-style: bold;
+    color: $text-muted;
+    border-bottom: solid $panel;
+}
+
 #todos {
     background: transparent;
     height: 1fr;
 }
 
-TodoItem.done Label {
+TodoItem {
+    /* Matches #columns, so a row's text starts under the "Todo" heading. */
+    padding: 0 1;
+}
+
+TodoItem Horizontal {
+    height: auto;
+}
+
+/* Strike the todo, not its dates: those stay a plain record of what happened. */
+TodoItem.done .text {
     color: $text-muted;
     text-style: strike;
 }

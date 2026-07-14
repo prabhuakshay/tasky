@@ -1,13 +1,6 @@
 import json
 
-import pytest
-
 from tasky_tui.storage import DATA_DIR_ENV_VAR, Todo, TodoStore, data_dir
-
-
-@pytest.fixture
-def store(tmp_path):
-    return TodoStore(tmp_path / "todos.json")
 
 
 def test_load_returns_empty_when_file_absent(store):
@@ -33,6 +26,44 @@ def test_save_preserves_ids_and_timestamps(store):
 
     assert loaded.id == original.id
     assert loaded.created_at == original.created_at
+
+
+def test_completing_a_todo_records_when(store):
+    todo = Todo(text="buy milk")
+    assert todo.completed_at is None
+
+    todo.set_done(True)
+    store.save([todo])
+
+    (loaded,) = store.load()
+    assert loaded.done is True
+    assert loaded.completed_at == todo.completed_at
+
+
+def test_reopening_a_todo_clears_its_completion_date(store):
+    todo = Todo(text="buy milk")
+    todo.set_done(True)
+
+    todo.set_done(False)
+    store.save([todo])
+
+    (loaded,) = store.load()
+    assert loaded.done is False
+    assert loaded.completed_at is None
+
+
+def test_a_v1_file_loads_as_done_without_a_completion_date(store):
+    """Older tasky files record no completion date, and we must not invent one."""
+    store.path.parent.mkdir(parents=True, exist_ok=True)
+    store.path.write_text(
+        json.dumps({"version": 1, "todos": [{"text": "buy milk", "done": True}]}),
+        encoding="utf-8",
+    )
+
+    (loaded,) = store.load()
+
+    assert loaded.done is True
+    assert loaded.completed_at is None
 
 
 def test_save_creates_missing_parent_directories(tmp_path):
