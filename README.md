@@ -4,6 +4,7 @@
 
 **A task manager in your terminal.**
 
+[![CI](https://github.com/prabhuakshay/tasky/actions/workflows/ci.yml/badge.svg)](https://github.com/prabhuakshay/tasky/actions/workflows/ci.yml)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Built with Textual](https://img.shields.io/badge/built%20with-Textual-5A3FD6)](https://textual.textualize.io/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-22863A)](https://github.com/prabhuakshay/tasky/blob/main/LICENSE)
@@ -265,6 +266,22 @@ uv sync          # install dependencies
 uv run tasky     # run the app
 uv run pytest    # run the tests
 ```
+
+### Releasing
+
+Nobody uploads to PyPI from a laptop. Bump the version in `pyproject.toml`, then push a
+tag that agrees with it:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+That runs the tests, builds, and publishes — and the build refuses to go on if the tag
+and the version in `pyproject.toml` disagree, since a version number is a promise PyPI
+only lets you make once. GitHub proves who it is to PyPI with a short-lived token minted
+for that one run ([trusted publishing](https://docs.pypi.org/trusted-publishers/)), so
+there's no API token in the repo's secrets to leak, rotate, or forget about.
 
 ## About this project
 
